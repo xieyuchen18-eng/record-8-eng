@@ -111,7 +111,6 @@ textarea { height:100px; }
   <div id="pageNoteMulti" class="hidden">
     <h3>Enter Notes (Optional)</h3>
     <textarea id="note" placeholder="Write a short note..."></textarea>
-    <button onclick="startVoiceRecognition()">🎤 Voice Input</button>
     <button onclick="saveRecord(true)">Multiple Violations (Same ID)</button>
     <button onclick="saveRecord(false)">Save & Next</button>
   </div>
@@ -152,24 +151,9 @@ function populateTertiaryButtons(terObj) { const container = document.getElement
 function selectTertiary(t) { currentRecord.tertiary = t; show('pageNoteMulti'); }
 function saveRecord(continueSameID) { if (paused) { alert('Recording paused'); return; } currentRecord.note = document.getElementById('note')?.value.trim() || ''; records.push(currentRecord); updateViolationCount(); if (document.getElementById('note')) document.getElementById('note').value = ''; if (continueSameID) { startRecording(); } else { currentViolationID++; startRecording(); } }
 function pauseResume() { paused = !paused; const pauseBtn = document.getElementById('pauseBtn'); if (pauseBtn) pauseBtn.textContent = paused ? 'Resume Recording' : 'Pause Recording'; alert(paused ? 'Recording paused' : 'Recording resumed'); }
-async function exportZip() { if (records.length === 0) { alert('No records to export'); return; } const zip = new JSZip(); let csv = 'ViolationID,Time,Observer,Location,LocationType,Weather,RoadType,Primary,Secondary,Tertiary,Notes\n'; for (const r of records) { const esc = v => `"${String(v || '').replace(/"/g,'""')}"`; csv += [esc(r.violationID), esc(r.time), esc(r.observer), esc(r.location), esc(r.locationType), esc(Array.isArray(r.weather) ? r.weather.join(';') : r.weather), esc(r.roadType), esc(r.primary), esc(r.secondary), esc(r.tertiary), esc(r.note)].join(',') + '\n'; } zip.file('records.csv', csv); const content = await zip.generateAsync({ type: 'blob' }); const url = URL.createObjectURL(content); const a = document.createElement('a'); a.href = url; a.download = 'records_export.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); alert('ZIP generated and download started'); records = []; currentViolationID = 1; updateViolationCount(); show('page1'); }
+async function exportZip() { if (records.length === 0) { alert('No records to export'); return; } if (!confirm('Are you sure you want to export all records?')) return; const zip = new JSZip(); let csv = 'ViolationID,Time,Observer,Location,LocationType,Weather,RoadType,Primary,Secondary,Tertiary,Notes\n'; for (const r of records) { const esc = v => `"${String(v || '').replace(/"/g,'""')}"`; csv += [esc(r.violationID), esc(r.time), esc(r.observer), esc(r.location), esc(r.locationType), esc(Array.isArray(r.weather) ? r.weather.join(';') : r.weather), esc(r.roadType), esc(r.primary), esc(r.secondary), esc(r.tertiary), esc(r.note)].join(',') + '\n'; } zip.file('records.csv', csv); const content = await zip.generateAsync({ type: 'blob' }); const url = URL.createObjectURL(content); const a = document.createElement('a'); a.href = url; a.download = 'records_export.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); alert('ZIP generated and download started'); records = []; currentViolationID = 1; updateViolationCount(); show('page1'); }
 function updateViolationCount() { const unique = [...new Set(records.map(r => r.violationID))]; const countEl = document.getElementById('violationCount'); if (countEl) countEl.innerText = `Recorded ECT: ${unique.length}`; }
 function takePhoto() { const input = document.getElementById('photoInput'); if (!input) return; input.onchange = e => { const file = e.target.files[0]; if (file) { alert(`Photo ${file.name} captured!`); } input.value = ''; }; input.click(); }
-
-function startVoiceRecognition() {
-  if (!('webkitSpeechRecognition' in window)) { alert('Speech recognition not supported'); return; }
-  const recognition = new webkitSpeechRecognition();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  recognition.start();
-  recognition.onresult = function(event) {
-    const transcript = event.results[0][0].transcript;
-    const noteArea = document.getElementById('note');
-    if (noteArea) noteArea.value += (noteArea.value ? ' ' : '') + transcript;
-  };
-  recognition.onerror = function(event) { alert('Voice recognition error: ' + event.error); };
-}
 
 document.getElementById('menuToggleBtn')?.addEventListener('click', () => { document.getElementById('menu')?.classList.toggle('hidden'); });
 document.addEventListener('DOMContentLoaded', () => { show('loginPage'); });
@@ -181,7 +165,6 @@ window.saveRecord = saveRecord;
 window.exportZip = exportZip;
 window.populatePrimaryButtons = populatePrimaryButtons;
 window.takePhoto = takePhoto;
-window.startVoiceRecognition = startVoiceRecognition;
 </script>
 </body>
 </html>
