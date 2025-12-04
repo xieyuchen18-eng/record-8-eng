@@ -4,13 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Road Observation Recorder</title>
-
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
 <style>
 body { font-family: Arial, sans-serif; margin:0; padding:10px; }
 .hidden { display:none; }
-button { padding:12px 20px; margin:5px 0; font-size:16px; width:100%; text-align:left; box-sizing:border-box; }
+button { padding:16px 24px; margin:20px 0; font-size:16px; width:100%; text-align:left; box-sizing:border-box; }
 select, input[type=text], textarea { width:100%; padding:8px; margin:5px 0; font-size:16px; box-sizing:border-box; }
 .container { max-width:640px; margin:auto; padding-bottom:80px; }
 h2,h3 { text-align:center; margin:8px 0; }
@@ -19,7 +16,7 @@ textarea { height:100px; }
 #menuContainer { position:fixed; top:10px; right:10px; z-index:1000; width:40px; }
 #menuContainer button { font-size:18px; margin:2px 0; width:100%; display:block; text-align:center; padding:6px; }
 #menuContainer div { width:160px; position:absolute; top:30px; right:0; background:#fff; border:1px solid #ccc; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
-.behavior-btn { text-align:left; display:block; padding:12px; margin:6px 0; font-size:16px; border-radius:8px; border:1px solid #ddd; background:#fff; }
+.behavior-btn { text-align:left; display:block; padding:16px 24px; margin:20px 0; font-size:16px; border-radius:8px; border:1px solid #ddd; background:#fff; }
 .behavior-btn:active { background:#eef; }
 .small-note { font-size:12px; color:#666; margin-top:6px; text-align:center; }
 </style>
@@ -27,13 +24,11 @@ textarea { height:100px; }
 <body>
 
 <div id="violationCount" class="hidden">Recorded ECT: 0</div>
-
 <div id="menuContainer" class="hidden">
   <button id="menuToggleBtn">☰</button>
   <div id="menu" class="hidden">
     <button onclick="pauseResume()" id="pauseBtn">Pause Recording</button>
-    <button onclick="takePhoto()" id="photoBtn">Take Photo</button>
-    <button onclick="exportZip()" id="exportBtn">Stop & Export (ZIP)</button>
+    <button onclick="exportCSV()" id="exportBtn">Stop & Export (CSV)</button>
   </div>
 </div>
 
@@ -48,7 +43,6 @@ textarea { height:100px; }
   <div id="page1" class="hidden">
     <h2>Record Info</h2>
     <label>Location / Site ID:<br><input type="text" id="location" placeholder="e.g., Site-01 or Intersection A"></label>
-
     <label>Location Type:<br>
       <select id="locationType">
         <option>Residential (Old)</option>
@@ -61,7 +55,6 @@ textarea { height:100px; }
         <option>Other</option>
       </select>
     </label>
-
     <label>Weather (multi-select):<br>
       <select id="weather" multiple size="5">
         <option>Sunny</option>
@@ -76,7 +69,6 @@ textarea { height:100px; }
         <option>Other</option>
       </select>
     </label>
-
     <label>Road Type:<br>
       <select id="roadType">
         <option>Intersection</option>
@@ -89,7 +81,6 @@ textarea { height:100px; }
         <option>Other</option>
       </select>
     </label>
-
     <button onclick="startRecording()">Start Recording</button>
   </div>
 
@@ -116,16 +107,14 @@ textarea { height:100px; }
   </div>
 </div>
 
-<input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">
-
 <script>
 let records = [], currentRecord = null, paused = false, observerName = '', currentViolationID = 1;
-
 const behaviors = {
   "No Violation": {},
   "Use Motor Lane": {"Turn Left": null, "Turn Right": null, "Straight": null},
   "Use Cycle Lane": {"Turn Left": null, "Turn Right": null, "Straight": null},
-  "Use Bus Lane": {"Turn Left": null, "Turn Right": null, "Straight": null},
+  "Use Bus Lane": {},
+  "Use Walkway": {},
   "Other Behaviors": {
     "Red Light Violation": {"Immediate": null, "Wait then Go": null},
     "Helmet Violation": {"No Helmet": null, "Sport Helmet": null, "Incorrect Wearing": null},
@@ -139,32 +128,92 @@ const behaviors = {
   }
 };
 
-function show(id) { const el = document.getElementById(id); if (el) { document.querySelectorAll('.container > div').forEach(e => e.classList.add('hidden')); el.classList.remove('hidden'); } }
-function login() { const obs = document.getElementById('observer')?.value.trim(); if (!obs) { alert('Enter observer ID'); return; } observerName = obs; document.getElementById('violationCount')?.classList.remove('hidden'); document.getElementById('menuContainer')?.classList.remove('hidden'); show('page1'); }
-function startRecording() { if (!document.getElementById('location')?.value.trim()) { alert('Enter location'); return; } currentRecord = { violationID: currentViolationID, time: new Date().toISOString(), observer: observerName, location: document.getElementById('location').value.trim(), locationType: document.getElementById('locationType').value, weather: Array.from(document.getElementById('weather').selectedOptions).map(o => o.value), roadType: document.getElementById('roadType').value, photosFiles: [], photosNames: [], primary: '', secondary: '', tertiary: '', note: '', hasMore: false }; populatePrimaryButtons(); show('pagePrimary'); }
+function show(id){document.querySelectorAll('.container>div').forEach(e=>e.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');}
+function login(){observerName=document.getElementById('observer')?.value.trim();if(!observerName){alert('Enter observer ID');return;}document.getElementById('violationCount').classList.remove('hidden');document.getElementById('menuContainer').classList.remove('hidden');show('page1');}
+function startRecording(){if(!document.getElementById('location')?.value.trim()){alert('Enter location');return;}currentRecord={violationID:currentViolationID,time:new Date().toISOString(),observer:observerName,location:document.getElementById('location').value.trim(),locationType:document.getElementById('locationType').value,weather:Array.from(document.getElementById('weather').selectedOptions).map(o=>o.value),roadType:document.getElementById('roadType').value,primary:'',secondary:'',tertiary:'',note:'',hasMore:false};populatePrimaryButtons();show('pagePrimary');}
+function populatePrimaryButtons(){const container=document.getElementById('primaryButtons');container.innerHTML='';Object.keys(behaviors).forEach(k=>{const b=document.createElement('button');b.className='behavior-btn';b.textContent=k;b.onclick=()=>selectPrimary(k);container.appendChild(b);});}
+function selectPrimary(k){currentRecord.primary=k;const sec=behaviors[k];if(sec&&Object.keys(sec).length>0){populateSecondaryButtons(sec);show('pageSecondary');}else{show('pageNoteMulti');}}
+function populateSecondaryButtons(sec){const container=document.getElementById('secondaryButtons');container.innerHTML='';Object.keys(sec).forEach(s=>{const b=document.createElement('button');b.className='behavior-btn';b.textContent=s;b.onclick=()=>selectSecondary(s);container.appendChild(b);});}
+function selectSecondary(s){currentRecord.secondary=s;const tert=behaviors[currentRecord.primary][s];if(tert&&Object.keys(tert).length>0){populateTertiaryButtons(tert);show('pageTertiary');}else{show('pageNoteMulti');}}
+function populateTertiaryButtons(ter){const container=document.getElementById('tertiaryButtons');container.innerHTML='';Object.keys(ter).forEach(t=>{const b=document.createElement('button');b.className='behavior-btn';b.textContent=t;b.onclick=()=>selectTertiary(t);container.appendChild(b);});}
+function selectTertiary(t){currentRecord.tertiary=t;show('pageNoteMulti');}
 
-function populatePrimaryButtons() { const container = document.getElementById('primaryButtons'); if (!container) return; container.innerHTML = ''; Object.keys(behaviors).forEach(key => { const b = document.createElement('button'); b.className = 'behavior-btn'; b.textContent = key; b.onclick = () => selectPrimary(key); container.appendChild(b); }); }
-function selectPrimary(key) { currentRecord.primary = key; const secondary = behaviors[key]; if (secondary && Object.keys(secondary).length > 0) { populateSecondaryButtons(secondary); show('pageSecondary'); } else { show('pageNoteMulti'); } }
-function populateSecondaryButtons(secObj) { const container = document.getElementById('secondaryButtons'); if (!container) return; container.innerHTML = ''; Object.keys(secObj).forEach(s => { const b = document.createElement('button'); b.className = 'behavior-btn'; b.textContent = s; b.onclick = () => selectSecondary(s); container.appendChild(b); }); }
-function selectSecondary(sec) { currentRecord.secondary = sec; const tert = behaviors[currentRecord.primary][sec]; if (tert && Object.keys(tert).length > 0) { populateTertiaryButtons(tert); show('pageTertiary'); } else { show('pageNoteMulti'); } }
-function populateTertiaryButtons(terObj) { const container = document.getElementById('tertiaryButtons'); if (!container) return; container.innerHTML = ''; Object.keys(terObj).forEach(t => { const b = document.createElement('button'); b.className = 'behavior-btn'; b.textContent = t; b.onclick = () => selectTertiary(t); container.appendChild(b); }); }
-function selectTertiary(t) { currentRecord.tertiary = t; show('pageNoteMulti'); }
-function saveRecord(continueSameID) { if (paused) { alert('Recording paused'); return; } currentRecord.note = document.getElementById('note')?.value.trim() || ''; records.push(currentRecord); updateViolationCount(); if (document.getElementById('note')) document.getElementById('note').value = ''; if (continueSameID) { startRecording(); } else { currentViolationID++; startRecording(); } }
-function pauseResume() { paused = !paused; const pauseBtn = document.getElementById('pauseBtn'); if (pauseBtn) pauseBtn.textContent = paused ? 'Resume Recording' : 'Pause Recording'; alert(paused ? 'Recording paused' : 'Recording resumed'); }
-async function exportZip() { if (records.length === 0) { alert('No records to export'); return; } if (!confirm('Are you sure you want to export all records?')) return; const zip = new JSZip(); let csv = 'ViolationID,Time,Observer,Location,LocationType,Weather,RoadType,Primary,Secondary,Tertiary,Notes\n'; for (const r of records) { const esc = v => `"${String(v || '').replace(/"/g,'""')}"`; csv += [esc(r.violationID), esc(r.time), esc(r.observer), esc(r.location), esc(r.locationType), esc(Array.isArray(r.weather) ? r.weather.join(';') : r.weather), esc(r.roadType), esc(r.primary), esc(r.secondary), esc(r.tertiary), esc(r.note)].join(',') + '\n'; } zip.file('records.csv', csv); const content = await zip.generateAsync({ type: 'blob' }); const url = URL.createObjectURL(content); const a = document.createElement('a'); a.href = url; a.download = 'records_export.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); alert('ZIP generated and download started'); records = []; currentViolationID = 1; updateViolationCount(); show('page1'); }
-function updateViolationCount() { const unique = [...new Set(records.map(r => r.violationID))]; const countEl = document.getElementById('violationCount'); if (countEl) countEl.innerText = `Recorded ECT: ${unique.length}`; }
-function takePhoto() { const input = document.getElementById('photoInput'); if (!input) return; input.onchange = e => { const file = e.target.files[0]; if (file) { alert(`Photo ${file.name} captured!`); } input.value = ''; }; input.click(); }
+function saveRecord(cont){
+    if(paused){ alert('Recording paused'); return; }
+    currentRecord.note = document.getElementById('note')?.value.trim() || '';
+    records.push(currentRecord);
+    updateViolationCount();
+    document.getElementById('note').value = '';
 
-document.getElementById('menuToggleBtn')?.addEventListener('click', () => { document.getElementById('menu')?.classList.toggle('hidden'); });
-document.addEventListener('DOMContentLoaded', () => { show('loginPage'); });
+    if(cont){
+        currentRecord = {
+            violationID: currentViolationID,
+            time: new Date().toISOString(),
+            observer: observerName,
+            location: document.getElementById('location')?.value.trim() || 'DefaultLocation',
+            locationType: document.getElementById('locationType').value,
+            weather: Array.from(document.getElementById('weather').selectedOptions).map(o=>o.value),
+            roadType: document.getElementById('roadType').value,
+            primary: 'Other Behaviors',
+            secondary: '',
+            tertiary: '',
+            note: '',
+            hasMore: false
+        };
+        populateSecondaryButtons(behaviors['Other Behaviors']);
+        show('pageSecondary');
+    } else {
+        currentViolationID++;
+        startRecording();
+    }
+}
 
-window.startRecording = startRecording;
-window.login = login;
-window.pauseResume = pauseResume;
-window.saveRecord = saveRecord;
-window.exportZip = exportZip;
-window.populatePrimaryButtons = populatePrimaryButtons;
-window.takePhoto = takePhoto;
+function pauseResume(){paused=!paused;document.getElementById('pauseBtn').textContent=paused?'Resume Recording':'Pause Recording';alert(paused?'Recording paused':'Recording resumed');}
+
+function exportCSV() {
+    if(records.length===0){ alert('No records to export'); return; }
+
+    const first = records[0];
+    const dt = new Date(first.time);
+    const yyyy = dt.getFullYear();
+    const mm = ('0'+(dt.getMonth()+1)).slice(-2);
+    const dd = ('0'+dt.getDate()).slice(-2);
+    const hh = ('0'+dt.getHours()).slice(-2);
+    const min = ('0'+dt.getMinutes()).slice(-2);
+    const loc = (first.location ? first.location : 'DefaultLocation').replace(/[^a-zA-Z0-9]/g,'');
+    const csvName = `${loc}_${yyyy}${mm}${dd}_${hh}${min}.csv`;
+
+    let csv = 'ViolationID,Time,Observer,Location,LocationType,Weather,RoadType,Primary,Secondary,Tertiary,Notes\n';
+    records.forEach(r => {
+        const esc = v => `"${String(v||'').replace(/"/g,'""')}"`;
+        csv += [esc(r.violationID), esc(r.time), esc(r.observer), esc(r.location),
+                esc(r.locationType), esc(Array.isArray(r.weather)?r.weather.join(';'):r.weather),
+                esc(r.roadType), esc(r.primary), esc(r.secondary), esc(r.tertiary), esc(r.note)].join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    if (navigator.msSaveBlob) {
+        navigator.msSaveBlob(blob, csvName);
+    } else {
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", csvName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    records = [];
+    currentViolationID = 1;
+    updateViolationCount();
+    show('page1');
+}
+
+function updateViolationCount(){document.getElementById('violationCount').innerText=`Recorded ECT: ${[...new Set(records.map(r=>r.violationID))].length}`;}
+document.getElementById('menuToggleBtn').addEventListener('click',()=>{document.getElementById('menu').classList.toggle('hidden');});
+document.addEventListener('DOMContentLoaded',()=>{show('loginPage');});
 </script>
 </body>
 </html>
